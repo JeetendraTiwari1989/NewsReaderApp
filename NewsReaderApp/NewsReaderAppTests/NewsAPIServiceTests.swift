@@ -5,60 +5,82 @@
 //  Created by Jeetendra on 14/09/24.
 //
 
+
 import XCTest
-@testable import NewsReaderApp // Replace with your app's module name
+@testable import NewsReaderApp
 
-final class NewsAPIServiceTests: XCTestCase {
-    func testFetchNewsSuccess() {
-        let expectation = XCTestExpectation(description: "Fetch news successfully")
-        let category = "technology"
-
-        NewsAPIService.shared.fetchNews(for: category) { result in
-            switch result {
-            case .success(let articles):
-                XCTAssertGreaterThan(articles.count, 0, "Should have received articles.")
-                expectation.fulfill()
-            case .failure:
-                XCTFail("Expected success but got failure.")
-            }
-        }
-
-        wait(for: [expectation], timeout: 5.0)
+class NewsAPIServiceTests: XCTestCase {
+    
+    var apiService: NewsAPIService!
+    
+    override func setUp() {
+        super.setUp()
+        apiService = NewsAPIService.shared
     }
     
-    func testFetchGeneralNewsSuccess() {
-        let expectation = XCTestExpectation(description: "Fetch news successfully")
-        let category = "general"
-
-        NewsAPIService.shared.fetchNews(for: category) { result in
-            switch result {
-            case .success(let articles):
-                XCTAssertGreaterThan(articles.count, 0, "Should have received articles.")
-                expectation.fulfill()
-            case .failure:
-                XCTFail("Expected success but got failure.")
-            }
-        }
-
-        wait(for: [expectation], timeout: 5.0)
+    override func tearDown() {
+        apiService = nil
+        super.tearDown()
     }
-
-    func testFetchNewsFailure() {
-        let expectation = XCTestExpectation(description: "Fail to fetch news")
-        let invalidCategory = "invalid_category_test"
-
-        NewsAPIService.shared.fetchNews(for: invalidCategory) { result in
-            switch result {
-            case .success(let articles):
-                XCTAssertEqual(articles.count, 0, "Invalid category we have received empaty articles.")
-                expectation.fulfill()
-            case .failure(let error):
-                XCTAssertNotNil(error, "Expected an error but got nil.")
-                expectation.fulfill()
-            }
+    
+    func testFetchDataSuccess() {
+        // Define the URL of the API endpoint you want to test.
+        let urlString = "https://newsapi.org/v2/top-headlines?country=us&apiKey=\(Configuration.apiKey)"
+        
+        // Define the expectation
+        let expectation = self.expectation(description: "Completion handler invoked")
+        
+        // Define the result variable
+        var result: Result<NewsResponse, Error>?
+        
+        // Call the fetchData method
+        apiService.fetchData(from: urlString) { (response: Result<NewsResponse, Error>) in
+            result = response
+            expectation.fulfill()
         }
-
-        wait(for: [expectation], timeout: 5.0)
+        
+        // Wait for the expectations to be fulfilled
+        waitForExpectations(timeout: 10.0, handler: nil)
+        
+        // Assert that the result is a success and validate the data
+        switch result {
+        case .success(let newsResponse):
+            XCTAssertNotNil(newsResponse.articles, "Articles should not be nil")
+            XCTAssertGreaterThan(newsResponse.articles.count, 0, "There should be at least one article")
+        case .failure(let error):
+            XCTFail("Expected success, but got failure: \(error)")
+        case .none:
+            XCTFail("Expected result, but got nil")
+        }
+    }
+    
+    func testFetchDataFailure() {
+        // Define an invalid URL to simulate failure
+        let urlString = "https://invalid.url/endpoint"
+        
+        // Define the expectation
+        let expectation = self.expectation(description: "Completion handler invoked")
+        
+        // Define the result variable
+        var result: Result<NewsResponse, Error>?
+        
+        // Call the fetchData method
+        apiService.fetchData(from: urlString) { (response: Result<NewsResponse, Error>) in
+            result = response
+            expectation.fulfill()
+        }
+        
+        // Wait for the expectations to be fulfilled
+        waitForExpectations(timeout: 10.0, handler: nil)
+        
+        // Assert that the result is a failure
+        switch result {
+        case .success:
+            XCTFail("Expected failure, but got success")
+        case .failure(let error):
+            XCTAssertNotNil(error, "Error should not be nil")
+        case .none:
+            XCTFail("Expected result, but got nil")
+        }
     }
 }
-
